@@ -1,7 +1,11 @@
+mod hittable;
 mod ray;
+mod sphere;
 mod vec3;
 
+use hittable::{HitRecord, Hittable};
 use ray::Ray;
+use sphere::Sphere;
 use vec3::Vec3;
 
 // image
@@ -34,6 +38,18 @@ const DEPTH: Vec3 = Vec3 {
     z: FOCAL_LENGTH,
 };
 
+// colors
+const WHITE: Vec3 = Vec3 {
+    x: 1.0,
+    y: 1.0,
+    z: 1.0,
+};
+const SKY_BLUE: Vec3 = Vec3 {
+    x: 0.5,
+    y: 0.7,
+    z: 1.0,
+};
+
 fn test_vec3() {
     let u = Vec3::new(1.0, 2.0, 3.0);
     let v = Vec3::new(-2.0, 1.0, 2.0);
@@ -58,30 +74,18 @@ fn test_vec3() {
     eprintln!("{:>20}  =  {}", "v.cross(u)", v.cross(u));
 }
 
-fn hit_sphere(center: Vec3, radius: f64, ray: Ray) -> f64 {
-    let oc = ray.origin - center;
-    let a = ray.direction.squared_length();
-    let half_b = ray.direction.dot(oc);
-    let c = oc.squared_length() - radius * radius;
-    let discriminant = half_b * half_b - a * c;
-
-    if discriminant < 0.0 {
-        return -1.0;
-    } else {
-        return (-half_b - discriminant.sqrt()) / a;
+fn ray_color(ray: Ray) -> Vec3 {
+    // sphere
+    let sphere = Sphere::new(Vec3::new(0.0, 0.0, -1.0), 0.5);
+    let mut rec = HitRecord::new_empty();
+    if sphere.hit(ray, 0.0, 10000.0, &mut rec) {
+        return (rec.normal + 1.0) * 0.5;
     }
-}
 
-fn ray_color(r: Ray) -> Vec3 {
-    let center = Vec3::new(0.0, 0.0, -1.0);
-    let t: f64 = hit_sphere(center, 0.5, r);
-    if t > 0.0 {
-        let N = (r.at(t) - center).unit_vector();
-        return Vec3::new(N.x + 1.0, N.y + 1.0, N.z + 1.0) * 0.5;
-    }
-    let unit_direction: Vec3 = r.direction.unit_vector();
+    // background color
+    let unit_direction: Vec3 = ray.direction.unit_vector();
     let t: f64 = (unit_direction.y + 1.0) * 0.5;
-    Vec3::new(1.0, 1.0, 1.0) * (1.0 - t) + Vec3::new(0.5, 0.7, 1.0) * t
+    WHITE * (1.0 - t) + SKY_BLUE * t
 }
 
 fn write_color(v: Vec3) {
