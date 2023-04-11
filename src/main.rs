@@ -3,7 +3,7 @@ mod ray;
 mod sphere;
 mod vec3;
 
-use hittable::{HitRecord, Hittable};
+use hittable::{Hittable, HittableList};
 use ray::Ray;
 use sphere::Sphere;
 use vec3::Vec3;
@@ -74,18 +74,15 @@ fn test_vec3() {
     eprintln!("{:>20}  =  {}", "v.cross(u)", v.cross(u));
 }
 
-fn ray_color(ray: Ray) -> Vec3 {
-    // sphere
-    let sphere = Sphere::new(Vec3::new(0.0, 0.0, -1.0), 0.5);
-    let mut rec = HitRecord::new_empty();
-    if sphere.hit(ray, 0.0, 10000.0, &mut rec) {
-        return (rec.normal + 1.0) * 0.5;
+fn ray_color(ray: Ray, world: &dyn Hittable) -> Vec3 {
+    match world.hit(ray, 0.0, std::f64::INFINITY) {
+        Some(hit) => return (hit.normal + 1.0) * 0.5,
+        None => {
+            let unit_direction = ray.direction.unit_vector();
+            let t = (unit_direction.y + 1.0) * 0.5;
+            WHITE * (1.0 - t) + SKY_BLUE * t
+        }
     }
-
-    // background color
-    let unit_direction: Vec3 = ray.direction.unit_vector();
-    let t: f64 = (unit_direction.y + 1.0) * 0.5;
-    WHITE * (1.0 - t) + SKY_BLUE * t
 }
 
 fn write_color(v: Vec3) {
@@ -108,6 +105,11 @@ fn main() {
     // I don't know how
     let lower_left_corner: Vec3 = ORIGIN - HORIZONTAL / 2.0 - VERTICAL / 2.0 - DEPTH;
 
+    // world
+    let mut world: HittableList = HittableList::new_empty();
+    world.add(Box::new(Sphere::new(Vec3::new(0.0, 0.0, -1.0), 0.5)));
+    world.add(Box::new(Sphere::new(Vec3::new(0.0, -100.5, -1.0), 100.0)));
+
     // render
     eprintln!("\nStarting render");
 
@@ -124,7 +126,7 @@ fn main() {
                 ORIGIN,
                 lower_left_corner + HORIZONTAL * u + VERTICAL * v - ORIGIN,
             );
-            let pixel_color: Vec3 = ray_color(r);
+            let pixel_color: Vec3 = ray_color(r, &world);
             write_color(pixel_color);
         }
     }
