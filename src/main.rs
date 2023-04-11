@@ -60,15 +60,15 @@ fn test_vec3() {
 
 fn hit_sphere(center: Vec3, radius: f64, ray: Ray) -> f64 {
     let oc = ray.origin - center;
-    let a = ray.direction.dot(ray.direction);
-    let b = ray.direction.dot(oc) * 2.0;
-    let c = oc.dot(oc) - radius * radius;
-    let discriminant = b * b - 4.0 * a * c;
+    let a = ray.direction.squared_length();
+    let half_b = ray.direction.dot(oc);
+    let c = oc.squared_length() - radius * radius;
+    let discriminant = half_b * half_b - a * c;
 
     if discriminant < 0.0 {
         return -1.0;
     } else {
-        return (-b - discriminant.sqrt()) / (2.0 * a);
+        return (-half_b - discriminant.sqrt()) / a;
     }
 }
 
