@@ -58,18 +58,26 @@ fn test_vec3() {
     eprintln!("{:>20}  =  {}", "v.cross(u)", v.cross(u));
 }
 
-fn hit_sphere(center: Vec3, radius: f64, ray: Ray) -> bool {
+fn hit_sphere(center: Vec3, radius: f64, ray: Ray) -> f64 {
     let oc = ray.origin - center;
     let a = ray.direction.dot(ray.direction);
     let b = ray.direction.dot(oc) * 2.0;
     let c = oc.dot(oc) - radius * radius;
     let discriminant = b * b - 4.0 * a * c;
-    discriminant > 0.0
+
+    if discriminant < 0.0 {
+        return -1.0;
+    } else {
+        return (-b - discriminant.sqrt()) / (2.0 * a);
+    }
 }
 
 fn ray_color(r: Ray) -> Vec3 {
-    if hit_sphere(Vec3::new(0.0, 0.0, -1.0), 0.5, r) {
-        return Vec3::new(1.0, 0.0, 0.0);
+    let center = Vec3::new(0.0, 0.0, -1.0);
+    let t: f64 = hit_sphere(center, 0.5, r);
+    if t > 0.0 {
+        let N = (r.at(t) - center).unit_vector();
+        return Vec3::new(N.x + 1.0, N.y + 1.0, N.z + 1.0) * 0.5;
     }
     let unit_direction: Vec3 = r.direction.unit_vector();
     let t: f64 = (unit_direction.y + 1.0) * 0.5;
