@@ -1,6 +1,8 @@
 use std::fmt;
 use std::ops::{Add, Div, Mul, Neg, Sub};
 
+use rand::Rng;
+
 #[derive(Copy, Clone)]
 pub struct Vec3 {
     pub x: f64,
@@ -11,6 +13,13 @@ pub struct Vec3 {
 impl Vec3 {
     pub fn new(x: f64, y: f64, z: f64) -> Vec3 {
         Vec3 { x, y, z }
+    }
+    pub fn random(min: f64, max: f64) -> Vec3 {
+        Vec3 {
+            x: rand::thread_rng().gen_range(min..max),
+            y: rand::thread_rng().gen_range(min..max),
+            z: rand::thread_rng().gen_range(min..max),
+        }
     }
     pub fn squared_length(self) -> f64 {
         self.x * self.x + self.y * self.y + self.z * self.z
