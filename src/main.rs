@@ -1,44 +1,19 @@
+mod camera;
 mod hittable;
 mod ray;
 mod sphere;
 mod vec3;
 
+use std::io::{self, Write};
+
+use rand::Rng;
+
+use camera::Camera;
 use hittable::{Hittable, HittableList};
 use ray::Ray;
 use sphere::Sphere;
 use vec3::Vec3;
 
-// image
-const ASPECT_RATIO: f64 = 16.0 / 9.0;
-const IMAGE_WIDTH: u32 = 400;
-const IMAGE_HEIGHT: u32 = (IMAGE_WIDTH as f64 / ASPECT_RATIO) as u32;
-
-// camera (eye)
-const VIEWPORT_HEIGHT: f64 = 2.0;
-const VIEWPORT_WIDTH: f64 = ASPECT_RATIO * VIEWPORT_HEIGHT;
-const FOCAL_LENGTH: f64 = 1.0;
-const ORIGIN: Vec3 = Vec3 {
-    x: 0.0,
-    y: 0.0,
-    z: 0.0,
-};
-const HORIZONTAL: Vec3 = Vec3 {
-    x: VIEWPORT_WIDTH,
-    y: 0.0,
-    z: 0.0,
-};
-const VERTICAL: Vec3 = Vec3 {
-    x: 0.0,
-    y: VIEWPORT_HEIGHT,
-    z: 0.0,
-};
-const DEPTH: Vec3 = Vec3 {
-    x: 0.0,
-    y: 0.0,
-    z: FOCAL_LENGTH,
-};
-
-// colors
 const WHITE: Vec3 = Vec3 {
     x: 1.0,
     y: 1.0,
@@ -86,50 +61,64 @@ fn ray_color(ray: Ray, world: &dyn Hittable) -> Vec3 {
 }
 
 fn write_color(v: Vec3) {
-    println!(
-        "{} {} {}",
-        (v.x * 255.999) as u32,
-        (v.y * 255.999) as u32,
-        (v.z * 255.999) as u32
-    );
+    let to_val = |x: f64| (x.clamp(0.0, 0.999) * 256.0) as u32;
+    println!("{} {} {}", to_val(v.x), to_val(v.y), to_val(v.z));
+}
+
+fn render(
+    image_width: u32,
+    image_height: u32,
+    camera: Camera,
+    world: HittableList,
+    samples_per_pixel: u32,
+) {
+    eprintln!("\nStarting render");
+
+    println!("P3");
+    println!("{} {}", image_width, image_height);
+    println!("255");
+
+    let get_u = |i: u32| (i as f64 + rand::thread_rng().gen::<f64>()) / (image_width - 1) as f64;
+    let get_v = |j: u32| (j as f64 + rand::thread_rng().gen::<f64>()) / (image_height - 1) as f64;
+    let get_ray = |i: u32, j: u32| camera.get_ray(get_u(i), get_v(j));
+
+    for j in (0..image_height).rev() {
+        eprint!("\rScanlines remaining {j}");
+        for i in 0..image_width {
+            let pixel_color = (0..samples_per_pixel)
+                .map(|_| get_ray(i, j))
+                .map(|ray| ray_color(ray, &world))
+                .reduce(|a, b| a + b)
+                .unwrap()
+                / samples_per_pixel as f64;
+            write_color(pixel_color);
+        }
+    }
+    eprintln!("\nDone render");
 }
 
 fn main() {
     // test vec3 methods and operators
     test_vec3();
 
-    // compute lower left hand corner
-    // TODO: this is not initialized as a global constant because the
-    // overloaded operators unfortunately do not work on constants :/
-    // I feel like there is probably a way to intelligently do this but
-    // I don't know how
-    let lower_left_corner: Vec3 = ORIGIN - HORIZONTAL / 2.0 - VERTICAL / 2.0 - DEPTH;
+    // image
+    let aspect_ratio = 16.0 / 9.0;
+    let image_width = 400;
+    let image_height = (image_width as f64 / aspect_ratio) as u32;
+
+    // camera
+    let origin = Vec3::new(0.0, 0.0, 0.0);
+    let viewport_height = 2.0;
+    let viewport_width = aspect_ratio * viewport_height;
+    let focal_length = 1.0;
+    let camera =
+        Camera::from_width_height_focal(origin, viewport_width, viewport_height, focal_length);
 
     // world
-    let mut world: HittableList = HittableList::new_empty();
+    let mut world = HittableList::new_empty();
     world.add(Box::new(Sphere::new(Vec3::new(0.0, 0.0, -1.0), 0.5)));
     world.add(Box::new(Sphere::new(Vec3::new(0.0, -100.5, -1.0), 100.0)));
 
     // render
-    eprintln!("\nStarting render");
-
-    println!("P3");
-    println!("{} {}", IMAGE_WIDTH, IMAGE_HEIGHT);
-    println!("255");
-
-    for j in (0..IMAGE_HEIGHT).rev() {
-        eprint!("\rScanlines remaining {j}");
-        for i in 0..IMAGE_WIDTH {
-            let u = i as f64 / (IMAGE_WIDTH - 1) as f64;
-            let v = j as f64 / (IMAGE_HEIGHT - 1) as f64;
-            let r: Ray = Ray::new(
-                ORIGIN,
-                lower_left_corner + HORIZONTAL * u + VERTICAL * v - ORIGIN,
-            );
-            let pixel_color: Vec3 = ray_color(r, &world);
-            write_color(pixel_color);
-        }
-    }
-
-    eprintln!("\nDone");
+    render(image_width, image_height, camera, world, 100);
 }
