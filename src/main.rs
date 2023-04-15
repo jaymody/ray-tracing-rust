@@ -1,10 +1,13 @@
 mod camera;
 mod hittable;
+mod material;
 mod ray;
 mod sphere;
+mod utils;
 mod vec3;
 
 use indicatif::ParallelProgressIterator;
+use material::{Lambertian, Metal};
 use rand::Rng;
 use rayon::prelude::*;
 
@@ -30,39 +33,16 @@ const SKY_BLUE: Vec3 = Vec3 {
     z: 1.0,
 };
 
-fn random_in_unit_sphere() -> Vec3 {
-    loop {
-        let p = Vec3::random(-1.0, 1.0);
-        if p.length() < 1.0 {
-            return p;
-        }
-    }
-}
-
-fn random_unit_vector() -> Vec3 {
-    random_in_unit_sphere().unit_vector()
-}
-
-fn random_in_hemisphere(normal: Vec3) -> Vec3 {
-    let in_unit_sphere = random_in_unit_sphere();
-    if normal.dot(in_unit_sphere) > 0.0 {
-        return in_unit_sphere;
-    } else {
-        return -in_unit_sphere;
-    }
-}
-
 fn ray_color(ray: Ray, world: &dyn Hittable, depth: u32) -> Vec3 {
     if depth <= 0 {
         return BLACK;
     }
     match world.hit(ray, 0.001, std::f64::INFINITY) {
         Some(hit) => {
-            return ray_color(
-                Ray::new(hit.p, random_in_hemisphere(hit.normal)),
-                world,
-                depth - 1,
-            ) * 0.5
+            return {
+                let (reflected_ray, attenuation) = hit.material.scatter(ray, &hit);
+                ray_color(reflected_ray, world, depth - 1) * attenuation
+            }
         }
         None => {
             let unit_direction = ray.direction.unit_vector();
@@ -130,8 +110,26 @@ fn main() {
 
     // world
     let mut world = HittableList::new_empty();
-    world.add(Box::new(Sphere::new(Vec3::new(0.0, 0.0, -1.0), 0.5)));
-    world.add(Box::new(Sphere::new(Vec3::new(0.0, -100.5, -1.0), 100.0)));
+    world.add(Box::new(Sphere::new(
+        Vec3::new(0.0, -100.5, -1.0),
+        100.0,
+        Box::new(Lambertian::new(Vec3::new(0.8, 0.8, 0.0))),
+    )));
+    world.add(Box::new(Sphere::new(
+        Vec3::new(0.0, 0.0, -1.0),
+        0.5,
+        Box::new(Lambertian::new(Vec3::new(0.7, 0.3, 0.3))),
+    )));
+    world.add(Box::new(Sphere::new(
+        Vec3::new(-1.0, 0.0, -1.0),
+        0.5,
+        Box::new(Metal::new(Vec3::new(0.8, 0.8, 0.8), 0.3)),
+    )));
+    world.add(Box::new(Sphere::new(
+        Vec3::new(1.0, 0.0, -1.0),
+        0.5,
+        Box::new(Metal::new(Vec3::new(0.8, 0.6, 0.2), 1.0)),
+    )));
 
     // render
     let samples_per_pixel: u32 = 100;
