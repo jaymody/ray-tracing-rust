@@ -7,7 +7,7 @@ mod utils;
 mod vec3;
 
 use indicatif::ParallelProgressIterator;
-use material::{Lambertian, Metal};
+use material::{Dielectric, Lambertian, Metal};
 use rand::Rng;
 use rayon::prelude::*;
 
@@ -118,17 +118,22 @@ fn main() {
     world.add(Box::new(Sphere::new(
         Vec3::new(0.0, 0.0, -1.0),
         0.5,
-        Box::new(Lambertian::new(Vec3::new(0.7, 0.3, 0.3))),
+        Box::new(Lambertian::new(Vec3::new(0.1, 0.2, 0.5))),
     )));
     world.add(Box::new(Sphere::new(
         Vec3::new(-1.0, 0.0, -1.0),
         0.5,
-        Box::new(Metal::new(Vec3::new(0.8, 0.8, 0.8), 0.3)),
+        Box::new(Dielectric::new(1.5)),
+    )));
+    world.add(Box::new(Sphere::new(
+        Vec3::new(-1.0, 0.0, -1.0),
+        -0.4,
+        Box::new(Dielectric::new(1.5)),
     )));
     world.add(Box::new(Sphere::new(
         Vec3::new(1.0, 0.0, -1.0),
         0.5,
-        Box::new(Metal::new(Vec3::new(0.8, 0.6, 0.2), 1.0)),
+        Box::new(Metal::new(Vec3::new(0.8, 0.6, 0.2), 0.0)),
     )));
 
     // render
