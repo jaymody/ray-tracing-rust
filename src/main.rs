@@ -7,7 +7,7 @@ mod utils;
 mod vec3;
 
 use indicatif::ParallelProgressIterator;
-use material::{Dielectric, Lambertian, Metal};
+use material::{Dielectric, Lambertian, Material, Metal};
 use rand::Rng;
 use rayon::prelude::*;
 
@@ -32,6 +32,64 @@ const SKY_BLUE: Vec3 = Vec3 {
     y: 0.7,
     z: 1.0,
 };
+
+fn random_scene() -> HittableList {
+    let mut world = HittableList::new_empty();
+
+    // ground material
+    world.add(Box::new(Sphere::new(
+        Vec3::new(0.0, -1000.0, 0.0),
+        1000.0,
+        Box::new(Lambertian::new(Vec3::new(0.5, 0.5, 0.5))),
+    )));
+
+    // random spheres in the scene
+    for a in -11..11 {
+        for b in -11..11 {
+            let choose_mat: f64 = rand::thread_rng().gen_range(0.0..1.0);
+            let center = Vec3::new(
+                a as f64 + 0.9 * rand::thread_rng().gen_range(0.0..1.0),
+                0.2,
+                b as f64 + 0.9 * rand::thread_rng().gen_range(0.0..1.0),
+            );
+
+            if (center - Vec3::new(4.0, 0.2, 0.0)).length() > 0.9 {
+                let material: Box<dyn Material> = if choose_mat < 0.8 {
+                    Box::new(Lambertian::new(
+                        Vec3::random(0.0, 1.0) * Vec3::random(0.0, 1.0),
+                    ))
+                } else if choose_mat < 0.95 {
+                    Box::new(Metal::new(
+                        Vec3::random(0.5, 1.0),
+                        rand::thread_rng().gen_range(0.0..0.5),
+                    ))
+                } else {
+                    Box::new(Dielectric::new(1.5))
+                };
+
+                world.add(Box::new(Sphere::new(center, 0.2, material)));
+            }
+        }
+    }
+
+    world.add(Box::new(Sphere::new(
+        Vec3::new(0.0, 1.0, 0.0),
+        1.0,
+        Box::new(Dielectric::new(1.5)),
+    )));
+    world.add(Box::new(Sphere::new(
+        Vec3::new(-4.0, 1.0, 0.0),
+        1.0,
+        Box::new(Lambertian::new(Vec3::new(0.4, 0.2, 0.1))),
+    )));
+    world.add(Box::new(Sphere::new(
+        Vec3::new(4.0, 1.0, 0.0),
+        1.0,
+        Box::new(Metal::new(Vec3::new(0.7, 0.6, 0.5), 0.5)),
+    )));
+
+    world
+}
 
 fn ray_color(ray: Ray, world: &dyn Hittable, depth: u32) -> Vec3 {
     if depth <= 0 {
@@ -96,49 +154,21 @@ fn render(
 
 fn main() {
     // image
-    let aspect_ratio = 16.0 / 9.0;
-    let image_width = 400;
+    let aspect_ratio = 3.0 / 2.0;
+    let image_width = 500;
     let image_height = (image_width as f64 / aspect_ratio) as u32;
 
     // camera
-    let camera = Camera::new(
-        Vec3::new(-2.0, 2.0, 1.0),
-        Vec3::new(0.0, 0.0, -1.0),
-        Vec3::new(0.0, 1.0, 0.0),
-        20.0,
-        aspect_ratio,
-    );
+    let lookfrom = Vec3::new(13.0, 2.0, 3.0);
+    let lookat = Vec3::new(0.0, 0.0, 0.0);
+    let vup = Vec3::new(0.0, 1.0, 0.0);
+    let camera = Camera::new(lookfrom, lookat, vup, 20.0, aspect_ratio, 0.1, 10.0);
 
     // world
-    let mut world = HittableList::new_empty();
-    world.add(Box::new(Sphere::new(
-        Vec3::new(0.0, -100.5, -1.0),
-        100.0,
-        Box::new(Lambertian::new(Vec3::new(0.8, 0.8, 0.0))),
-    )));
-    world.add(Box::new(Sphere::new(
-        Vec3::new(0.0, 0.0, -1.0),
-        0.5,
-        Box::new(Lambertian::new(Vec3::new(0.1, 0.2, 0.5))),
-    )));
-    world.add(Box::new(Sphere::new(
-        Vec3::new(-1.0, 0.0, -1.0),
-        0.5,
-        Box::new(Dielectric::new(1.5)),
-    )));
-    world.add(Box::new(Sphere::new(
-        Vec3::new(-1.0, 0.0, -1.0),
-        -0.45,
-        Box::new(Dielectric::new(1.5)),
-    )));
-    world.add(Box::new(Sphere::new(
-        Vec3::new(1.0, 0.0, -1.0),
-        0.5,
-        Box::new(Metal::new(Vec3::new(0.8, 0.6, 0.2), 0.0)),
-    )));
+    let world = random_scene();
 
     // render
-    let samples_per_pixel: u32 = 100;
+    let samples_per_pixel: u32 = 200;
     let max_depth: u32 = 50;
     render(
         image_width,
