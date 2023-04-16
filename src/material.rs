@@ -20,7 +20,7 @@ impl Lambertian {
 }
 
 impl Material for Lambertian {
-    fn scatter(&self, ray: Ray, hit: &HitRecord) -> (Ray, Vec3) {
+    fn scatter(&self, _ray: Ray, hit: &HitRecord) -> (Ray, Vec3) {
         (
             Ray::new(hit.p, random_in_hemisphere(hit.normal)),
             self.albedo,

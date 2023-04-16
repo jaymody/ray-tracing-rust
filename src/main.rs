@@ -101,12 +101,13 @@ fn main() {
     let image_height = (image_width as f64 / aspect_ratio) as u32;
 
     // camera
-    let origin = Vec3::new(0.0, 0.0, 0.0);
-    let viewport_height = 2.0;
-    let viewport_width = aspect_ratio * viewport_height;
-    let focal_length = 1.0;
-    let camera =
-        Camera::from_width_height_focal(origin, viewport_width, viewport_height, focal_length);
+    let camera = Camera::new(
+        Vec3::new(-2.0, 2.0, 1.0),
+        Vec3::new(0.0, 0.0, -1.0),
+        Vec3::new(0.0, 1.0, 0.0),
+        20.0,
+        aspect_ratio,
+    );
 
     // world
     let mut world = HittableList::new_empty();
@@ -127,7 +128,7 @@ fn main() {
     )));
     world.add(Box::new(Sphere::new(
         Vec3::new(-1.0, 0.0, -1.0),
-        -0.4,
+        -0.45,
         Box::new(Dielectric::new(1.5)),
     )));
     world.add(Box::new(Sphere::new(
